@@ -1181,4 +1181,149 @@ describe('<Tabs.Root />', () => {
     expect(secondTab.tabIndex).to.equal(0);
     expect(thirdTab.tabIndex).to.equal(-1);
   });
+
+  describe('disabled tab initial selection', () => {
+    it('should not select a disabled first tab when no value or defaultValue is provided', async () => {
+      const { getAllByRole } = await render(
+        <Tabs.Root>
+          <Tabs.List>
+            <Tabs.Tab value={0} disabled />
+            <Tabs.Tab value={1} />
+            <Tabs.Tab value={2} />
+          </Tabs.List>
+          <Tabs.Panel value={0}>Panel 0</Tabs.Panel>
+          <Tabs.Panel value={1}>Panel 1</Tabs.Panel>
+          <Tabs.Panel value={2}>Panel 2</Tabs.Panel>
+        </Tabs.Root>,
+      );
+
+      const [disabledTab, enabledTab] = getAllByRole('tab');
+      const panels = getAllByRole('tabpanel', { hidden: true });
+
+      // The disabled first tab should not be selected
+      expect(disabledTab).to.have.attribute('aria-selected', 'false');
+      // The first non-disabled tab should be selected instead
+      expect(enabledTab).to.have.attribute('aria-selected', 'true');
+
+      // Check that the correct panel is visible
+      expect(panels[0]).to.have.attribute('hidden');
+      expect(panels[1]).not.to.have.attribute('hidden');
+      expect(panels[2]).to.have.attribute('hidden');
+    });
+
+    it('should select the first non-disabled tab when multiple initial tabs are disabled', async () => {
+      const { getAllByRole } = await render(
+        <Tabs.Root>
+          <Tabs.List>
+            <Tabs.Tab value={0} disabled />
+            <Tabs.Tab value={1} disabled />
+            <Tabs.Tab value={2} />
+            <Tabs.Tab value={3} />
+          </Tabs.List>
+          <Tabs.Panel value={0}>Panel 0</Tabs.Panel>
+          <Tabs.Panel value={1}>Panel 1</Tabs.Panel>
+          <Tabs.Panel value={2}>Panel 2</Tabs.Panel>
+          <Tabs.Panel value={3}>Panel 3</Tabs.Panel>
+        </Tabs.Root>,
+      );
+
+      const tabs = getAllByRole('tab');
+      const panels = getAllByRole('tabpanel', { hidden: true });
+
+      // The first two disabled tabs should not be selected
+      expect(tabs[0]).to.have.attribute('aria-selected', 'false');
+      expect(tabs[1]).to.have.attribute('aria-selected', 'false');
+      // The first non-disabled tab (third tab) should be selected
+      expect(tabs[2]).to.have.attribute('aria-selected', 'true');
+      expect(tabs[3]).to.have.attribute('aria-selected', 'false');
+
+      // Check that the correct panel is visible
+      expect(panels[0]).to.have.attribute('hidden');
+      expect(panels[1]).to.have.attribute('hidden');
+      expect(panels[2]).not.to.have.attribute('hidden');
+      expect(panels[3]).to.have.attribute('hidden');
+    });
+
+    it('should still select a disabled tab when explicitly set via defaultValue', async () => {
+      const { getAllByRole } = await render(
+        <Tabs.Root defaultValue={0}>
+          <Tabs.List>
+            <Tabs.Tab value={0} disabled />
+            <Tabs.Tab value={1} />
+            <Tabs.Tab value={2} />
+          </Tabs.List>
+          <Tabs.Panel value={0}>Panel 0</Tabs.Panel>
+          <Tabs.Panel value={1}>Panel 1</Tabs.Panel>
+          <Tabs.Panel value={2}>Panel 2</Tabs.Panel>
+        </Tabs.Root>,
+      );
+
+      const [disabledTab, enabledTab] = getAllByRole('tab');
+      const panels = getAllByRole('tabpanel', { hidden: true });
+
+      // The explicitly set disabled tab should be selected
+      expect(disabledTab).to.have.attribute('aria-selected', 'true');
+      expect(enabledTab).to.have.attribute('aria-selected', 'false');
+
+      // Check that the correct panel is visible
+      expect(panels[0]).not.to.have.attribute('hidden');
+      expect(panels[1]).to.have.attribute('hidden');
+      expect(panels[2]).to.have.attribute('hidden');
+    });
+
+    it('should still select a disabled tab when explicitly set via value prop', async () => {
+      const { getAllByRole } = await render(
+        <Tabs.Root value={0}>
+          <Tabs.List>
+            <Tabs.Tab value={0} disabled />
+            <Tabs.Tab value={1} />
+            <Tabs.Tab value={2} />
+          </Tabs.List>
+          <Tabs.Panel value={0}>Panel 0</Tabs.Panel>
+          <Tabs.Panel value={1}>Panel 1</Tabs.Panel>
+          <Tabs.Panel value={2}>Panel 2</Tabs.Panel>
+        </Tabs.Root>,
+      );
+
+      const [disabledTab, enabledTab] = getAllByRole('tab');
+      const panels = getAllByRole('tabpanel', { hidden: true });
+
+      // The explicitly set disabled tab should be selected
+      expect(disabledTab).to.have.attribute('aria-selected', 'true');
+      expect(enabledTab).to.have.attribute('aria-selected', 'false');
+
+      // Check that the correct panel is visible
+      expect(panels[0]).not.to.have.attribute('hidden');
+      expect(panels[1]).to.have.attribute('hidden');
+      expect(panels[2]).to.have.attribute('hidden');
+    });
+
+    it('should select the first tab when all tabs are disabled and no explicit value is provided', async () => {
+      const { getAllByRole } = await render(
+        <Tabs.Root>
+          <Tabs.List>
+            <Tabs.Tab value={0} disabled />
+            <Tabs.Tab value={1} disabled />
+            <Tabs.Tab value={2} disabled />
+          </Tabs.List>
+          <Tabs.Panel value={0}>Panel 0</Tabs.Panel>
+          <Tabs.Panel value={1}>Panel 1</Tabs.Panel>
+          <Tabs.Panel value={2}>Panel 2</Tabs.Panel>
+        </Tabs.Root>,
+      );
+
+      const tabs = getAllByRole('tab');
+      const panels = getAllByRole('tabpanel', { hidden: true });
+
+      // When all tabs are disabled, the first tab should still be selected as fallback
+      expect(tabs[0]).to.have.attribute('aria-selected', 'true');
+      expect(tabs[1]).to.have.attribute('aria-selected', 'false');
+      expect(tabs[2]).to.have.attribute('aria-selected', 'false');
+
+      // Check that the correct panel is visible
+      expect(panels[0]).not.to.have.attribute('hidden');
+      expect(panels[1]).to.have.attribute('hidden');
+      expect(panels[2]).to.have.attribute('hidden');
+    });
+  });
 });

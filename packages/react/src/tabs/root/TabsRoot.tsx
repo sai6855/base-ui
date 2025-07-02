@@ -24,7 +24,7 @@ export const TabsRoot = React.forwardRef(function TabsRoot(
 ) {
   const {
     className,
-    defaultValue = 0,
+    defaultValue,
     onValueChange: onValueChangeProp,
     orientation = 'horizontal',
     render,
@@ -36,9 +36,23 @@ export const TabsRoot = React.forwardRef(function TabsRoot(
 
   const tabPanelRefs = React.useRef<(HTMLElement | null)[]>([]);
 
+  // Track whether defaultValue was explicitly provided
+  const wasDefaultValueProvided = React.useRef(defaultValue !== undefined);
+  const wasValueProvided = React.useRef(valueProp !== undefined);
+
+  // Calculate the computed default value
+  const computedDefaultValue = React.useMemo(() => {
+    // If explicit defaultValue or value was provided, use defaultValue (or 0 if defaultValue is undefined but value is provided)
+    if (wasDefaultValueProvided.current || wasValueProvided.current) {
+      return defaultValue ?? 0;
+    }
+    // If neither was provided, we'll compute the first non-disabled tab dynamically
+    return 0; // Initial fallback, will be updated when tabs are registered
+  }, [defaultValue]);
+
   const [value, setValue] = useControlled({
     controlled: valueProp,
-    default: defaultValue,
+    default: computedDefaultValue,
     name: 'Tabs',
     state: 'value',
   });
@@ -52,6 +66,65 @@ export const TabsRoot = React.forwardRef(function TabsRoot(
 
   const [tabActivationDirection, setTabActivationDirection] =
     React.useState<TabsTab.ActivationDirection>('none');
+
+  // Track if we've performed the initial disabled tab check
+  const hasPerformedInitialCheck = React.useRef(false);
+
+  // Function to find the first non-disabled tab
+  const findFirstNonDisabledTab = React.useCallback(() => {
+    if (tabMap.size === 0) return 0;
+
+    const tabEntries = Array.from(tabMap.values())
+      .filter((metadata): metadata is CompositeMetadata<TabsTab.Metadata> => metadata !== null)
+      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+
+    for (const metadata of tabEntries) {
+      if (!metadata.disabled) {
+        return metadata.value ?? metadata.index ?? 0;
+      }
+    }
+
+    // If all tabs are disabled, return the first one
+    return tabEntries[0]?.value ?? tabEntries[0]?.index ?? 0;
+  }, [tabMap]);
+
+  // Effect to handle initial tab selection when no explicit value/defaultValue was provided
+  React.useEffect(() => {
+    // Only run this logic if:
+    // 1. We haven't performed the initial check yet
+    // 2. No explicit value or defaultValue was provided by the user
+    // 3. We have tabs registered
+    // 4. We're not in controlled mode
+    if (
+      !hasPerformedInitialCheck.current &&
+      !wasDefaultValueProvided.current &&
+      !wasValueProvided.current &&
+      tabMap.size > 0 &&
+      valueProp === undefined
+    ) {
+      hasPerformedInitialCheck.current = true;
+
+      const firstNonDisabledTab = findFirstNonDisabledTab();
+
+      // Only update if the current value points to a disabled tab
+      if (value !== firstNonDisabledTab) {
+        // Check if current tab is disabled
+        const currentTabMetadata = Array.from(tabMap.values()).find(
+          (metadata) => metadata && (metadata.value ?? metadata.index) === value
+        );
+
+        if (currentTabMetadata?.disabled) {
+          setValue(firstNonDisabledTab);
+        }
+      }
+    }
+  }, [
+    tabMap,
+    value,
+    setValue,
+    valueProp,
+    findFirstNonDisabledTab,
+  ]);
 
   const onValueChange = useEventCallback(
     (
@@ -213,8 +286,9 @@ export namespace TabsRoot {
     /**
      * The default value. Use when the component is not controlled.
      * When the value is `null`, no Tab will be selected.
+     * When no defaultValue is provided, the first non-disabled tab will be selected automatically.
      * @type Tabs.Tab.Value
-     * @default 0
+     * @default 0 (or first non-disabled tab if not explicitly set)
      */
     defaultValue?: TabsTab.Value;
     /**
