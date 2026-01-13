@@ -356,3 +356,144 @@ pnpm run build
 - Focus on HIGH priority cases first for maximum impact
 - Test thoroughly, especially for the `useInteractions` and `markOthers` utilities which are used extensively
 - Consider adding ESLint rules to prevent these patterns in future code
+
+
+
+  Factors That Affect Bundle Size
+
+  1. Minification Efficiency (Most Important)
+
+  Different code patterns minify differently:
+
+  // Source: 80 characters
+  const result = [];
+  for (let i = 0; i < items.length; i++) {
+    result.push(items[i] * 2);
+  }
+
+  // Minified: ~60 characters
+  const a=[];for(let b=0;b<items.length;b++)a.push(items[b]*2);
+
+  // VS
+
+  // Source: 50 characters
+  const result = items.map(item => item * 2);
+
+  // Minified: ~35 characters
+  const a=items.map(b=>b*2);
+
+  Same functionality, but the second one is smaller BOTH in source and minified!
+
+  2. AST Complexity (Abstract Syntax Tree)
+
+  More complex code structures = larger minified output:
+
+  // Complex: Multiple statements, variables
+  const x = 5;
+  const y = 10;
+  const z = x + y;
+  // Minified: const x=5,y=10,z=x+y; (~24 chars)
+
+  // Simple: Single expression
+  const z = 5 + 10;
+  // Minified: const z=15; (~12 chars after constant folding)
+
+  3. Compression (Gzip/Brotli) Loves Repetition
+
+  // Repetitive code - compresses VERY well
+  const a = "hello world";
+  const b = "hello world";
+  const c = "hello world";
+  // After gzip: ~30 bytes (not 3× the string size!)
+
+  // VS
+
+  // Unique strings - compresses poorly
+  const a = "hello world";
+  const b = "foo bar baz";
+  const c = "qux zap fizz";
+  // After gzip: ~40 bytes (much larger relatively)
+
+  4. String Literals vs Code
+
+  // 30 characters source
+  const msg = "Hello, World!";
+  // Minified: const msg="Hello, World!"; (~30 chars - same!)
+
+  // VS
+
+  // 30 characters source
+  const sum = a + b + c + d;
+  // Minified: const sum=a+b+c+d; (~19 chars - much smaller!)
+
+  Strings don't minify much, but code does!
+
+  5. Function Calls and Method Chaining
+
+  // 50 characters
+  array.map(x => x).filter(x => x).reduce((a,b) => a+b)
+
+  // Minified: ~48 characters (not much savings)
+  // Each method name stays the same: .map .filter .reduce
+
+  // VS
+
+  // 40 characters
+  array.reduce((a,x) => x ? a+x : a, 0)
+
+  // Minified: ~38 characters
+  // Fewer method names = smaller output
+
+  Real Example from Your Repo
+
+  // BEFORE: ~150 source characters
+  const labels = values.map(v => format(v));
+  const nodes = [];
+  labels.forEach((label, i) => {
+    nodes.push(transform(label, i));
+  });
+  return nodes;
+
+  // Minified: ~110 bytes
+  const a=values.map(v=>format(v)),b=[];a.forEach((c,d)=>{b.push(transform(c,d))});return b
+
+  // AFTER: ~100 source characters
+  return values.map((v, i) => transform(format(v), i));
+
+  // Minified: ~90 bytes
+  return values.map((v,i)=>transform(format(v),i))
+
+  20 fewer source characters → 20 fewer minified bytes!
+
+  But the correlation isn't 1:1. It's about:
+  - ✅ Fewer variable declarations (const a=, const b=)
+  - ✅ Fewer method calls (one .map instead of .map + .forEach)
+  - ✅ Fewer semicolons and commas
+  - ✅ Simpler AST structure
+
+  What REALLY Matters for Bundle Size
+  ┌──────────────────────────┬────────┬─────────────────────────────────────┐
+  │          Factor          │ Impact │                 Why                 │
+  ├──────────────────────────┼────────┼─────────────────────────────────────┤
+  │ Number of function calls │ High   │ .map, .forEach, etc. don't minify   │
+  ├──────────────────────────┼────────┼─────────────────────────────────────┤
+  │ Variable declarations    │ High   │ const, let, var + names take space  │
+  ├──────────────────────────┼────────┼─────────────────────────────────────┤
+  │ Intermediate arrays      │ High   │ More allocations = more code        │
+  ├──────────────────────────┼────────┼─────────────────────────────────────┤
+  │ String literals          │ Medium │ Stay same size, don't compress much │
+  ├──────────────────────────┼────────┼─────────────────────────────────────┤
+  │ Control flow (if/for)    │ Medium │ Keywords don't minify               │
+  ├──────────────────────────┼────────┼─────────────────────────────────────┤
+  │ Whitespace/formatting    │ None   │ Completely removed                  │
+  └──────────────────────────┴────────┴─────────────────────────────────────┘
+  Key Takeaway
+
+  Bundle size ≠ character count
+
+  It's about:
+  1. Code complexity (fewer statements, variables, calls)
+  2. Minification efficiency (simple expressions > complex statements)
+  3. Compression ratio (repetitive patterns > unique strings)
+
+  That's why our optimizations work: we're reducing structural complexity, not just typing fewer characters!
