@@ -34,7 +34,7 @@ The code is provably incorrect (inverted relative to every other usage in the co
 
 ---
 
-### 2. useEnhancedClickHandler: Handler called multiple times per click on Chrome/Edge
+### 2. useEnhancedClickHandler: Missing return after PointerEvent check causes fall-through
 
 **File:** `packages/utils/src/useEnhancedClickHandler.ts` lines 37-43
 
@@ -48,25 +48,47 @@ handleClick = (event) => {
 
   if ('pointerType' in event) {
     // Chrome and Edge correctly use PointerEvent
-    handler(event, event.pointerType);   // <-- called here
+    handler(event, event.pointerType);
+    // BUG: no return/else here
   }
-  // BUG: no return/else — falls through unconditionally
-  handler(event, lastClickInteractionTypeRef.current);  // <-- called again
+
+  handler(event, lastClickInteractionTypeRef.current);  // <-- always executes
   lastClickInteractionTypeRef.current = '';
 };
 ```
 
-**Bug:** On Chrome/Edge, where click events are `PointerEvent` instances (having `pointerType`), the handler is called at line 39 AND at line 42 (fall-through). Combined with the `handlePointerDown` call at line 24, the user's handler fires **3 times per click** on Chrome/Edge.
+**Bug:** Missing `return` (or `else`) after the PointerEvent handler call. This causes the code to **always** fall through to line 42, calling the handler again with `lastClickInteractionTypeRef.current` (the cached value from the `pointerdown` event).
 
-On Safari/Firefox (where click uses `MouseEvent`, no `pointerType`), the handler fires twice: once in `handlePointerDown`, once in `handleClick` — which is the intended behavior.
+**Behavior:**
+- If the click event's `'pointerType' in event` check passes: handler is called **twice** (line 39 with actual pointerType, line 42 with the same pointerType from cache)
+- If the check fails (even if it's a PointerEvent): handler is called once with the cached value from pointerdown
 
-**Fix:** Add `return` after line 39, or use `else` for line 42.
+**Impact:** The handler is always called at least twice: once from `handlePointerDown` (line 24) and once from the fall-through in `handleClick` (line 42). This is wasteful and could cause unnecessary re-renders or side effects.
+
+**Fix:** Add `else` to prevent fall-through, while preserving cleanup:
+```ts
+if ('pointerType' in event) {
+  handler(event, event.pointerType);
+} else {
+  handler(event, lastClickInteractionTypeRef.current);
+}
+lastClickInteractionTypeRef.current = '';  // cleanup still runs
+```
+
+OR move cleanup before the conditional:
+```ts
+const savedInteractionType = lastClickInteractionTypeRef.current;
+lastClickInteractionTypeRef.current = '';
+
+if ('pointerType' in event) {
+  handler(event, event.pointerType);
+} else {
+  handler(event, savedInteractionType);
+}
+```
 
 **Reproduction:**
-1. Use any component that calls `useEnhancedClickHandler` (e.g., `ToggleButton`)
-2. Add a `console.log` inside the handler
-3. Click with a mouse on Chrome or Edge
-4. Observe 3 console logs per click (expected: 2)
+See `test-enhanced-click-handler.tsx` — Click the button once and check the Call Log table. You should see 2+ entries for a single mouse click.
 
 ---
 

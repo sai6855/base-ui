@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Click Event Type</title>
+</head>
+<body>
+  <h2>Click Event Properties Test</h2>
+  <button id="testBtn">Click me</button>
+  <p id="output"></p>
+
+  <script>
+    const btn = document.getElementById('testBtn');
+    const output = document.getElementById('output');
+
+    btn.addEventListener('pointerdown', (e) => {
+      console.log('pointerdown:', {
+        type: e.type,
+        pointerType: e.pointerType,
+        'pointerType' in e: 'pointerType' in e,
+      });
+    });
+
+    btn.addEventListener('click', (e) => {
+      const hasPointerType = 'pointerType' in e;
+      console.log('click event:', {
+        type: e.type,
+        constructor: e.constructor.name,
+        pointerType: e.pointerType,
+        'pointerType' in e: hasPointerType,
+        detail: e.detail,
+      });
+
+      const msg = `
+        Click event properties:
+        - constructor: ${e.constructor.name}
+        - 'pointerType' in event: ${hasPointerType}
+        - event.pointerType: ${e.pointerType}
+        - event.detail: ${e.detail}
+      `;
+      output.innerHTML = msg;
+    });
+  </script>
+</body>
+</html>
