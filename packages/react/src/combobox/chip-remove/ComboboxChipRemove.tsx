@@ -44,12 +44,9 @@ export const ComboboxChipRemove = React.forwardRef(function ComboboxChipRemove(
     focusableWhenDisabled: true,
   });
 
-  const state: ComboboxChipRemove.State = React.useMemo(
-    () => ({
-      disabled,
-    }),
-    [disabled],
-  );
+  const state: ComboboxChipRemove.State = {
+    disabled,
+  };
 
   const element = useRenderElement('button', componentProps, {
     ref: [forwardedRef, buttonRef],
@@ -57,7 +54,6 @@ export const ComboboxChipRemove = React.forwardRef(function ComboboxChipRemove(
     props: [
       {
         tabIndex: -1,
-        'aria-readonly': readOnly || undefined,
         onClick(event) {
           if (disabled || readOnly) {
             return;
@@ -79,7 +75,7 @@ export const ComboboxChipRemove = React.forwardRef(function ComboboxChipRemove(
           if (removedIndex !== -1 && activeIndex === removedIndex) {
             store.state.setIndices({
               activeIndex: null,
-              type: store.state.keyboardActiveRef.current ? 'pointer' : 'keyboard',
+              type: store.state.keyboardActiveRef.current ? 'keyboard' : 'pointer',
             });
           }
 
@@ -114,7 +110,7 @@ export const ComboboxChipRemove = React.forwardRef(function ComboboxChipRemove(
             if (removedIndex !== -1 && activeIndex === removedIndex) {
               store.state.setIndices({
                 activeIndex: null,
-                type: store.state.keyboardActiveRef.current ? 'pointer' : 'keyboard',
+                type: store.state.keyboardActiveRef.current ? 'keyboard' : 'pointer',
               });
             }
 

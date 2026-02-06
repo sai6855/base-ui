@@ -65,14 +65,12 @@ export function useNumberFieldButton(params: useNumberFieldButton.Parameters) {
       valueRef.current = parsedValue;
       setValue(
         parsedValue,
-        createChangeEventDetails<NumberFieldRoot.ChangeEventReason, { direction?: Direction }>(
-          pressReason,
-          nativeEvent,
-          undefined,
-          {
-            direction: isIncrement ? 1 : -1,
-          },
-        ),
+        createChangeEventDetails<
+          NumberFieldRoot.ChangeEventReason,
+          { direction?: Direction | undefined }
+        >(pressReason, nativeEvent, undefined, {
+          direction: isIncrement ? 1 : -1,
+        }),
       );
     }
   }
@@ -229,16 +227,16 @@ export interface UseNumberFieldButtonParameters {
   formatOptionsRef: React.RefObject<Intl.NumberFormatOptions | undefined>;
   getStepAmount: (event?: EventWithOptionalKeyState) => number | undefined;
   id: string | undefined;
-  incrementValue: (amount: number, params: IncrementValueParameters) => void;
+  incrementValue: (amount: number, params: IncrementValueParameters) => boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
   inputValue: string;
   intentionalTouchCheckTimeout: Timeout;
   isIncrement: boolean;
   isPressedRef: React.RefObject<boolean | null>;
-  locale?: Intl.LocalesArgument;
+  locale?: Intl.LocalesArgument | undefined;
   movesAfterTouchRef: React.RefObject<number | null>;
   readOnly: boolean;
-  setValue: (value: number | null, details: NumberFieldRoot.ChangeEventDetails) => void;
+  setValue: (value: number | null, details: NumberFieldRoot.ChangeEventDetails) => boolean;
   startAutoChange: (isIncrement: boolean, event?: React.MouseEvent | Event) => void;
   stopAutoChange: () => void;
   valueRef: React.RefObject<number | null>;
