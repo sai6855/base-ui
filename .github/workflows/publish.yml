@@ -46,17 +46,24 @@ jobs:
       - name: Publish packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Workflow inputs are read through the environment rather than interpolated
+          # into the script: `${{ inputs.dist-tag }}` is a free-form string, and expanding
+          # it inline would run its contents as shell in the job that holds the npm
+          # publishing credentials.
+          DRY_RUN: ${{ inputs.dry-run }}
+          GITHUB_RELEASE: ${{ inputs.github-release }}
+          DIST_TAG: ${{ inputs.dist-tag }}
         run: |
           # Build common flags
-          ARGS=""
-          if [ "${{ inputs.dry-run }}" = "true" ]; then
-            ARGS="$ARGS --dry-run"
+          ARGS=()
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS+=(--dry-run)
           fi
-          if [ "${{ inputs.github-release }}" = "true" ]; then
-            ARGS="$ARGS --github-release"
+          if [ "$GITHUB_RELEASE" = "true" ]; then
+            ARGS+=(--github-release)
           fi
-          if [ -n "${{ inputs.dist-tag }}" ]; then
-            ARGS="$ARGS --tag ${{ inputs.dist-tag }}"
+          if [ -n "$DIST_TAG" ]; then
+            ARGS+=(--tag "$DIST_TAG")
           fi
 
-          pnpm code-infra publish --ci $ARGS
+          pnpm code-infra publish --ci "${ARGS[@]}"
